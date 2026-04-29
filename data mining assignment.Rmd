@@ -1,0 +1,231 @@
+---
+title: "Expenditure"
+author: "Imali Punsara"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Load necessary libraries
+```{r}
+library(tidyverse)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(class)
+
+```
+
+# Load dataset
+```{r}
+library(readr)
+data <- read_csv("healthexpenditurebyareaandsource.csv")
+View(healthexpenditurebyareaandsource)
+```
+
+# Exploratory Data Analysis (EDA)
+```{r}
+print(str(data))  # Check structure of dataset
+print(summary(data))  # Summary statistics
+print(colSums(is.na(data)))  # Check for missing values
+
+```
+
+# Convert categorical variables to factors
+```{r}
+data$state <- as.factor(data$state)
+data$area_of_expenditure <- as.factor(data$area_of_expenditure)
+data$broad_source_of_funding <- as.factor(data$broad_source_of_funding)
+data$detailed_source_of_funding <- as.factor(data$detailed_source_of_funding)
+```
+
+# Define target variable: Classify expenditure source as Government vs Non-Government
+```{r}
+data$Funding_Category <- ifelse(data$broad_source_of_funding == "Government", "Gov", "Non-Gov")
+data$Funding_Category <- as.factor(data$Funding_Category)
+
+```
+
+# Remove non-numeric columns not used for classification
+```{r}
+numeric_cols <- c("real_expenditure_millions")
+data_clean <- data %>% select(numeric_cols, Funding_Category)
+
+```
+
+# Split data into training and testing sets
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(data_clean$Funding_Category, p=0.7, list=FALSE)
+trainData <- data_clean[trainIndex, ]
+testData <- data_clean[-trainIndex, ]
+
+```
+
+# Train Classification Model - Decision Tree
+```{r}
+set.seed(123)
+model_dt <- rpart(Funding_Category ~ ., data=trainData, method="class")
+```
+
+# Visualize Decision Tree
+```{r}
+rpart.plot(model_dt)
+```
+
+# Predictions - Decision Tree
+```{r}
+predictions_dt <- predict(model_dt, testData, type="class")
+
+```
+
+# Evaluate Decision Tree Model Performance
+```{r}
+confusionMatrix(predictions_dt, testData$Funding_Category)
+```
+
+# Train Classification Model - Random Forest
+```{r}
+set.seed(123)
+model_rf <- randomForest(Funding_Category ~ ., data=trainData, ntree=100)
+
+```
+
+# Predictions - Random Forest
+```{r}
+predictions_rf <- predict(model_rf, testData)
+```
+
+# Evaluate Random Forest Model Performance
+```{r}
+confusionMatrix(predictions_rf, testData$Funding_Category)
+```
+
+# Train Classification Model - KNN
+```{r}
+set.seed(123)
+k <- 5  # Number of neighbors
+train_scaled <- scale(trainData[, numeric_cols])
+test_scaled <- scale(testData[, numeric_cols])
+predictions_knn <- knn(train_scaled, test_scaled, cl=trainData$Funding_Category, k=k)
+
+```
+
+# Evaluate KNN Model Performance
+```{r}
+confusionMatrix(predictions_knn, testData$Funding_Category)
+
+```
+
+# Clustering - K-Means
+```{r}
+set.seed(123)
+ data_scaled <- scale(data_clean[, numeric_cols])
+```
+
+# Determine optimal number of clusters using the Elbow method
+```{r}
+fviz_nbclust(data_scaled, kmeans, method = "wss")
+```
+
+# Apply K-Means with 3 clusters
+```{r}
+kmeans_result <- kmeans(data_scaled, centers=3, nstart=25)
+data_clean$Cluster <- as.factor(kmeans_result$cluster)
+```
+
+# Visualizing Clusters
+```{r}
+fviz_cluster(list(data = data_scaled, cluster = kmeans_result$cluster), geom = "point", ellipse.type = "convex")
+}else {
+  print("Error: Not enough numeric variables for clustering visualization.")
+}
+
+```
+
+#Clustering - Hierarchical Clustering
+```{r}
+if (ncol(data_clean[, numeric_cols, drop=FALSE]) > 1) {
+  hc <- hclust(dist(data_scaled), method = "ward.D2")
+  plot(hc, main = "Dendrogram of Hierarchical Clustering", sub = "", xlab = "")
+  rect.hclust(hc, k=3, border="red")
+} else {
+  print("Error: Not enough numeric variables for hierarchical clustering.")
+}
+```
+
+#DBSCAN (Density-Based Clustering)
+```{r}
+library(dbscan)
+
+# Standardize numeric data
+data_scaled <- scale(data_clean[, numeric_cols])
+
+# Apply DBSCAN clustering
+set.seed(123)
+dbscan_result <- dbscan(data_scaled, eps = 0.5, minPts = 5)
+
+# Add cluster labels to data set
+data_clean$Cluster_DBSCAN <- as.factor(dbscan_result$cluster)
+
+# Visualize Clustering
+ggplot(data_clean, aes(x = real_expenditure_millions, y = Cluster_DBSCAN, color = Cluster_DBSCAN)) +
+  geom_jitter() + 
+  labs(title = "DBSCAN Clustering of Health Expenditure", x = "Expenditure (Millions)", y = "Cluster")
+
+```
+
+#Gaussian Mixture Models (GMM)
+```{r}
+library(mclust)
+
+# Standardize numeric data
+data_scaled <- scale(data_clean[, numeric_cols])
+
+# Fit GMM model
+set.seed(123)
+gmm_model <- Mclust(data_scaled)
+
+# Add cluster labels
+data_clean$Cluster_GMM <- as.factor(gmm_model$classification)
+
+# Visualize Clustering
+fviz_cluster(list(data = data_scaled, cluster = gmm_model$classification), geom = "point", ellipse.type = "convex")
+
+```
+
+# Clustering - Gaussian Mixture Model (GMM)
+```{r}
+set.seed(123)
+gmm_model <- Mclust(data_scaled)
+data_clean$Cluster_GMM <- as.factor(gmm_model$classification)
+```
+
+# Visualizing GMM Clustering
+```{r}
+fviz_cluster(list(data = data_scaled, cluster = gmm_model$classification), geom = "point", ellipse.type = "convex")
+```
+
+
+#Mean Shift Clustering
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(mlbench)
+
+# Sample data set
+data(data_scaled)
+
+# Mean Shift clustering
+mean_shift_result <- meanShift(data[, -5], bandwidth = 0.5)
+
+# Add cluster results to the original dataset
+data$Cluster <- as.factor(mean_shift_result$cluster)
+
+# Plot the clusters
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Cluster)) +
+  geom_point() +
+  labs(title = "Mean Shift Clustering on Iris Dataset")
+
+```
+

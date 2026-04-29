@@ -1,0 +1,116 @@
+---
+title: "clustering"
+author: "Imali Punsara"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(cluster)
+library(factoextra)
+library(tidyr)
+
+```
+
+# Load the dataset
+```{r}
+library(readr)
+healthexpenditurebyareaandsource <- read_csv("healthexpenditurebyareaandsource.csv")
+View(healthexpenditurebyareaandsource)
+```
+
+# Select relevant numerical columns for clustering
+```{r}
+# Load necessary library
+library(dplyr)
+
+# Ensure df is correctly assigned
+df <- healthexpenditurebyareaandsource  # Use the correct data set name
+
+# Select relevant column and remove missing values
+data_cluster <- df %>% 
+  as.data.frame() %>%  # Ensure it's a data frame
+  select(real_expenditure_millions) %>% 
+  na.omit()
+```
+
+# Standardizing the data
+```{r}
+data_scaled <- scale(data_cluster)
+```
+
+# Ensure data has at least 2 dimensions for clustering visualization
+```{r}
+if (ncol(data_scaled) < 2) {
+  data_scaled <- cbind(data_scaled, runif(nrow(data_scaled)))
+}
+
+```
+
+
+# 1. K-Means Clustering
+```{r}
+set.seed(123)  # Correct function name
+kmeans_result <- kmeans(data_scaled, centers = 3, nstart = 25)
+df$cluster_kmeans <- as.factor(kmeans_result$cluster)
+
+# Visualizing clusters
+library(factoextra)  # Ensure factorextra is installed
+fviz_cluster(list(data = data_scaled, cluster = kmeans_result$cluster)) +
+  labs(title = "K-Means Clustering on Health Expenditure")
+
+```
+
+
+
+```{r}
+Dset.seed(123)
+kmeans_result <- kmeans(data_scaled, centers = 3, nstart = 25)
+df$cluster_kmeans <- as.factor(kmeans_result$cluster)
+
+fviz_cluster(list(data = data_scaled, cluster = kmeans_result$cluster)) +
+  labs(title = "K-Means Clustering on Health Expenditure")
+
+```
+
+# 2. Hierarchical Clustering
+```{r}
+hc_result <- hclust(dist(data_scaled), method = "ward.D2")
+plot(hc_result, main = "Dendrogram for Hierarchical Clustering", sub = "", xlab = "")
+rect.hclust(hc_result, k = 3, border = "red")
+
+```
+
+
+# Ensure required packages are installed
+```{r}
+if (!requireNamespace("dbscan", quietly = TRUE)) install.packages("dbscan")
+if (!requireNamespace("mclust", quietly = TRUE)) install.packages("mclust")
+
+```
+
+
+# 3. DBSCAN Clustering
+```{r}
+library(dbscan)
+dbscan_result <- dbscan::dbscan(data_scaled, eps = 0.5, minPts = 5)
+df$cluster_dbscan <- as.factor(dbscan_result$cluster)
+
+fviz_cluster(list(data = data_scaled, cluster = dbscan_result$cluster)) +
+  labs(title = "DBSCAN Clustering on Health Expenditure")
+
+```
+
+# 4. Gaussian Mixture Model (GMM) Clustering
+```{r}
+library(mclust)
+gmm_result <- Mclust(data_scaled)
+df$cluster_gmm <- as.factor(gmm_result$classification)
+
+fviz_cluster(list(data = data_scaled, cluster = gmm_result$classification)) +
+  labs(title = "Gaussian Mixture Model Clustering on Health Expenditure")
+
+```
+

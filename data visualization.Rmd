@@ -1,0 +1,76 @@
+---
+title: "data visuaization"
+author: "Imali Punsara"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+library(ggthemes)
+```
+
+# Load the dataset
+```{r}
+library(readr)
+df <- read_csv("C:/Users/singhagiri/Desktop/DM/healthexpenditurebyareaandsource.csv")
+View(healthexpenditurebyareaandsource)
+```
+
+# Convert financial_year to factor to maintain order
+```{r}
+df$financial_year <- factor(df$financial_year, levels = unique(df$financial_year))
+```
+
+# 1. Time-series plot of total expenditure over years
+```{r}
+ggplot(df %>% group_by(financial_year) %>% summarise(total_expenditure = sum(real_expenditure_millions)),
+       aes(x = financial_year, y = total_expenditure, group = 1)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point(color = "red") +
+  theme_minimal() +
+  labs(title = "Total Health Expenditure Over Years",
+       x = "Financial Year", y = "Expenditure (Millions)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+# 2. Bar chart of total expenditure by state
+```{r}
+ggplot(df %>% group_by(state) %>% summarise(total_expenditure = sum(real_expenditure_millions)),
+       aes(x = reorder(state, -total_expenditure), y = total_expenditure, fill = state)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Total Health Expenditure by State",
+       x = "State", y = "Expenditure (Millions)") +
+  theme(legend.position = "none")
+```
+
+# 3. Stacked bar chart of expenditure by funding source
+```{r}
+ggplot(df %>% group_by(broad_source_of_funding, state) %>% summarise(total_expenditure = sum(real_expenditure_millions)),
+       aes(x = state, y = total_expenditure, fill = broad_source_of_funding)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(title = "Health Expenditure by Funding Source and State",
+       x = "State", y = "Expenditure (Millions)", fill = "Funding Source")
+
+```
+
+
+# 4. Heatmap of area-wise expenditure trends
+```{r}
+df_heatmap <- df %>% group_by(area_of_expenditure, financial_year) %>% summarise(total_expenditure = sum(real_expenditure_millions))
+ggplot(df_heatmap, aes(x = financial_year, y = area_of_expenditure, fill = total_expenditure)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  theme_minimal() +
+  labs(title = "Heatmap of Health Expenditure by Area and Year",
+       x = "Financial Year", y = "Area of Expenditure", fill = "Expenditure (Millions)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+

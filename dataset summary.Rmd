@@ -1,0 +1,279 @@
+---
+title: "Data Mining Assignment"
+author: "Imali Punsara"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Load necessary libraries
+```{r}
+library(tidyverse)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(class)
+library(cluster)
+library(factoextra)
+```
+
+#Load dataset
+```{r}
+summaryg21 <- read_csv("C:/Users/singhagiri/Desktop/DM/summaryg21.csv")
+View(summaryg21)
+```
+
+#Rename columns
+```{r}
+colnames(summaryg21) <- c("Sector", "Output_M", "Employment_Jobs", "Wages_Salaries_M", "Local_Sales_M",
+                    "Regional_Exports_M", "Local_Expenditure_M", "Regional_Imports_M", "Value_Added_M")
+```
+
+#Convert numeric columns to proper format
+```{r}
+data <- summaryg21 %>% mutate(across(-Sector, ~as.numeric(gsub("[$,]", "", .))))
+```
+
+```{r}
+numeric_cols <- c("Output_M", "Employment_Jobs", "Wages_Salaries_M", "Local_Sales_M", 
+                  "Regional_Exports_M", "Local_Expenditure_M", "Regional_Imports_M", "Value_Added_M")
+
+```
+
+#check for missing values
+```{r}
+missing_values <- colSums(is.na(summaryg21))
+print(missing_values)
+```
+
+```{r}
+if (is.data.frame(summaryg21)) {
+  missing_values <- colSums(is.na(summaryg21))
+  print(missing_values)
+} else {
+  print("Error: Data is not in a valid format for checking missing values.")
+}
+```
+
+#summary statistics
+```{r}
+summary(summaryg21)
+
+```
+
+```{r}
+names(summaryg21)
+head(summaryg21)
+tail(summaryg21)
+str(summaryg21)
+```
+
+
+#check the dimension and number of points 
+```{r}
+nrow(summaryg21)
+ncol(summaryg21)
+dim(summaryg21) 
+```
+
+
+#Visualize missing data
+```{r}
+if (length(missing_values) > 0) {
+  ggplot(summaryg21 = as.data.frame(missing_values), aes(x = names(missing_values), y = missing_values)) + 
+    geom_bar(stat = "identity", fill = "red") + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+    labs(title = "Missing Values in Dataset", x = "Columns", y = "Count")
+}
+```
+
+```{r}
+missing_df <- data.frame(Variable = names(missing_values), Missing_Count = missing_values)
+ggplot(missing_df, aes(x = Variable, y = Missing_Count)) + 
+  geom_bar(stat = "identity", fill = "red") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(title = "Missing Values in Dataset", x = "Columns", y = "Count")
+```
+
+#data visualization
+## Histogram for distribution of numerical features
+```{r}
+ggplot(summaryg21, aes(x = Output_M)) + geom_histogram(binwidth = 50, fill = "blue", alpha = 0.7) +
+  labs(title = "Distribution of Output", x = "Output ($M)", y = "Count")
+```
+
+```{r}
+ggplot(summaryg21, aes(x = as.numeric(Output_M))) +
+  geom_histogram(binwidth = 50, fill = "blue", alpha = 0.7) +
+  labs(title = "Distribution of Output", x = "Output ($M)", y = "Count")
+
+```
+
+```{r}
+ggplot(summaryg21, aes(x = as.numeric(as.character(Wages_Salaries_M)))) +
+  geom_histogram(binwidth = 50, fill = "blue", alpha = 10) +
+  labs(title = "Distribution of wages_Salaries_M", x = "Wages_Salaries_M", y = "Count")
+
+```
+
+
+```{r}
+hist(summaryg21)
+```
+
+## Boxplot for detecting outliers
+```{r}
+ggplot(summaryg21, aes(y = Output_M)) + geom_boxplot(fill = "orange") +
+  labs(title = "Boxplot of Output", y = "Output ($M)")
+```
+
+## Scatter plot to examine correlations
+```{r}
+ggplot(summaryg21, aes(x = Output_M, y = Employment_Jobs)) + geom_point(color = "red") +
+  labs(title = "Scatter Plot: Output vs Employment", x = "Output ($M)", y = "Employment (Jobs)")
+```
+
+## Correlation heatmap
+```{r}
+cor_matrix <- cor(summaryg21[numeric_cols], use = "complete.obs")
+ggcorrplot(cor_matrix, lab = TRUE)
+
+```
+
+```{r}
+numeric_cols <- sapply(summaryg21, is.numeric)
+numeric_data <- summaryg21[, numeric_cols]
+correlation_matrix <- cor(numeric_data, use = "complete.obs")
+```
+
+```{r}
+ggplot(summaryg21, aes(x = Employment_Jobs)) +
+  geom_bar(fill = "purple") +
+  labs(title = "Count of Employment Levels", x = "Employment_jobs", y = "Count") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(summaryg21, aes(x = Output_M)) +
+  geom_histogram(binwidth = 50, fill = "blue", alpha = 0.7) +
+  labs(title = "Distribution of Output", x = "Output ($M)", y = "Count") +
+  theme_minimal()
+
+```
+
+```{r}
+str(summaryg21)
+
+```
+
+```{r}
+# Convert Output_M to numeric, ensuring no characters remain
+summaryg21$Output_M <- as.numeric(gsub("[$,]", "", summaryg21$Output_M))
+
+# Check for NA values after conversion
+sum(is.na(summaryg21$Output_M))
+
+```
+
+```{r}
+# Histogram for distribution of Output_M
+ggplot(summaryg21, aes(x = Output_M)) +
+  geom_histogram(binwidth = 50, fill = "blue", alpha = 0.7) +
+  labs(title = "Distribution of Output", x = "Output ($M)", y = "Count") +
+  theme_minimal()
+
+```
+
+```{r}
+cor_matrix <- cor(summaryg21[numeric_cols], use = "complete.obs")
+ggcorrplot(cor_matrix, lab = TRUE) +
+  labs(title = "Correlation Heatmap") +
+  theme_minimal()
+```
+
+```{r}
+library(ggcorrplot)
+
+```
+
+```{r}
+cor_matrix <- cor(summaryg21[numeric_cols], use = "complete.obs")
+ggcorrplot(cor_matrix, lab = TRUE) +
+  labs(title = "Correlation Heatmap") +
+  theme_minimal()
+```
+
+# Visualize target variable distribution (replace 'target_column' with actual column name)
+```{r}
+ggplot(summaryg21, aes(x = Employment_Jobs)) +
+  geom_bar() +
+  theme_minimal() +
+  ggtitle("Target Variable Distribution")
+```
+# Splitting data into training and testing sets
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(summaryg21$Employment_Jobs, p = 0.8, list = FALSE)
+trainData <- summaryg21[trainIndex, ]
+testData <- summaryg21[-trainIndex, ]
+```
+
+# Define target variable (replace with a suitable column name based on dataset context)
+```{r}
+target_variable <- "Employment_Jobs" 
+```
+
+```{r}
+summaryg21[[target_variable]] <- as.factor(summaryg21[[target_variable]])
+```
+
+# Visualize target variable distribution
+```{r}
+ggplot(summaryg21, aes(x = summaryg21[[target_variable]])) +
+  geom_bar() +
+  theme_minimal() +
+  ggtitle("Target Variable Distribution")
+```
+
+# Splitting data into training and testing sets
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(summaryg21[[target_variable]], p = 0.8, list = FALSE)
+trainData <- summaryg21[trainIndex, ]
+testData <- summaryg21[-trainIndex, ]
+
+```
+
+```{r}
+library(dplyr)
+ set.seed(2345)
+ train.summary = sample_frac(summaryg21, 0.7)
+ test.summary = summaryg21[-as.numeric(rownames(train.summary)),] # use as.numeric because rownames() returns character
+```
+
+
+
+```{r}
+summaryg21$Employment_Jobs <- factor(ifelse(summaryg21$Employment_Jobs >= 1000, "High", "Low"))
+```
+
+```{r}
+set.seed(123)
+model_dt <- rpart(Employment_Level ~ Output_M + Wages_Salaries_M + Local_Sales_M + Regional_Exports_M,
+                  summaryg21 = trainData, method="class")
+```
+
+```{r}
+confusionMatrix(as.factor(predictions_dt), testData$Employment_Level)
+```
+
+
+
+
+
+
+
+
+
+
+
